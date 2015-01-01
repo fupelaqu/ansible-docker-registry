@@ -14,13 +14,15 @@
     - name: Install and Configure Docker Registry
       pip: name=docker-registry
 
-    - name: stat docker-registry sample configuration file
-      stat: path=/usr/local/lib/python2.7/dist-packages/config/config_sample.yml
-      register: docker_registry_config_sample_stat
+    - file: path=/var/lib/docker-registry state=directory
 
-    - name: copy docker-registry sample configuration file
-      command: cp /usr/local/lib/python2.7/dist-packages/config/config_sample.yml /usr/local/lib/python2.7/dist-packages/docker_registry/lib/../../config/config.yml
-      when: docker_registry_config_sample_stat.stat.exists
+#    - name: stat docker-registry configuration file
+#      stat: path=/usr/local/lib/python2.7/dist-packages/config/config.yml
+#      register: docker_registry_config_stat
+
+    - name: copy docker-registry configuration file
+      copy: src=config.yml dest=/usr/local/lib/python2.7/dist-packages/config/config.yml
+#      when: not docker_registry_config_stat.stat.exists
       notify:
       - restart docker-registry
 
