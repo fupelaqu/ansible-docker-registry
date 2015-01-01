@@ -1,0 +1,14 @@
+---
+
+- name: Install docker-registry
+  hosts: registry
+  user: $user
+
+  vars_files:
+    - vars/main.yml
+
+  tasks:
+    - include: tasks/main.yml
+
+  handlers:
+    - include: handlers/main.yml

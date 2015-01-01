@@ -1,0 +1,7 @@
+---
+
+docker_registry_host: vagrant-registry.vm
+
+users:
+  - name: docker
+    password: changeit

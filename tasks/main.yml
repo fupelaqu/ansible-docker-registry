@@ -1,0 +1,48 @@
+---
+
+    - name: Install Prerequisites
+      apt: >
+        name={{ item }}
+        state=installed
+      with_items: 
+        - build-essential
+        - python-dev
+        - libevent-dev
+        - python-pip
+        - liblzma-dev
+
+    - name: Install and Configure Docker Registry
+      pip: name=docker-registry
+
+    - name: stat docker-registry sample configuration file
+      stat: path=/usr/local/lib/python2.7/dist-packages/config/config_sample.yml
+      register: docker_registry_config_sample_stat
+
+    - name: copy docker-registry sample configuration file
+      command: cp /usr/local/lib/python2.7/dist-packages/config/config_sample.yml /usr/local/lib/python2.7/dist-packages/docker_registry/lib/../../config/config.yml
+      when: docker_registry_config_sample_stat.stat.exists
+      notify:
+      - restart docker-registry
+
+    - file: path=/var/log/docker-registry state=directory
+
+    - copy: src=docker-registry.conf dest=/etc/init/
+      notify:
+      - restart docker-registry
+
+    - name: Secure Docker Registry with Nginx
+      apt: >
+        name={{item}}
+        state=installed
+      with_items:
+        - nginx
+        - python-passlib
+
+    - htpasswd: path=/etc/nginx/docker-registry.htpasswd name={{item.name}} password={{item.password}} owner=root group=root mode=0644
+      with_items: users
+
+    - template: src=docker-registry.j2 dest=/etc/nginx/sites-available/docker-registry owner=root group=root mode=0644
+
+    - file: src=/etc/nginx/sites-available/docker-registry dest=/etc/nginx/sites-enabled/docker-registry state=link
+      notify:
+      - restart nginx
