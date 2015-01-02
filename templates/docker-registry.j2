@@ -5,13 +5,22 @@ upstream docker-registry {
  server localhost:5000;
 }
 
+# uncomment if you want a 301 redirect for users attempting to connect
+# on port 80
+# NOTE: docker client will still fail. This is just for convenience
+# server {
+#   listen *:80;
+#   server_name {{docker_registry_host}};
+#   return 301 https://$server_name$request_uri;
+# }
+
 server {
- listen 8080;
+ listen 443;
  server_name {{docker_registry_host}};
 
- # ssl on;
- # ssl_certificate /etc/ssl/certs/docker-registry;
- # ssl_certificate_key /etc/ssl/private/docker-registry;
+ ssl on;
+ ssl_certificate /etc/nginx/ssl/server.crt;
+ ssl_certificate_key /etc/nginx/ssl/server.key;
 
  proxy_set_header Host       $http_host;   # required for Docker client sake
  proxy_set_header X-Real-IP  $remote_addr; # pass on real client IP
@@ -25,16 +34,15 @@ server {
      # let Nginx know about our auth file
      auth_basic              "Restricted";
      auth_basic_user_file    docker-registry.htpasswd;
-
-     proxy_pass http://docker-registry;
+     include                 docker-registry.conf;
  }
  location /_ping {
      auth_basic off;
-     proxy_pass http://docker-registry;
+     include                 docker-registry.conf;
  }  
  location /v1/_ping {
      auth_basic off;
-     proxy_pass http://docker-registry;
+     include                 docker-registry.conf;
  }
 
 }
