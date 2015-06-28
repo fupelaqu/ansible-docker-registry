@@ -10,6 +10,8 @@
         - libevent-dev
         - python-pip
         - liblzma-dev
+        - libssl-dev
+        - swig
 
     - name: Install and Configure Docker Registry
       pip: name=docker-registry
