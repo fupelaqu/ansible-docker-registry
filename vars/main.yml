@@ -1,6 +1,7 @@
 ---
 
-docker_registry_host: vagrant-registry.vm
+docker_registry_fqdn: "{{ansible_fqdn}}"
+docker_registry_ip: "{{hostvars[inventory_hostname]['ansible_eth1']['ipv4']['address']}}"
 
 users:
   - name: docker
