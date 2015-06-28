@@ -46,7 +46,7 @@
       register: docker_registry_cert_stat
 
     - name: create server key and certificate
-      command: openssl req -new -nodes -x509 -subj "/C=/ST=/L=/O=/CN={{ansible_fqdn}}/subjectAltName=IP:{{hostvars[inventory_hostname]['ansible_eth1']['ipv4']['address']}}" -days 3650 -keyout /etc/nginx/ssl/server.key -out /etc/nginx/ssl/server.crt -extensions v3_ca creates=/etc/nginx/ssl/server.crt
+      command: openssl req -new -nodes -x509 -subj "/C=/ST=/L=/O=/CN={{docker_registry_fqdn}}/subjectAltName=IP:{{docker_registry_ip}}" -days 3650 -keyout /etc/nginx/ssl/server.key -out /etc/nginx/ssl/server.crt -extensions v3_ca creates=/etc/nginx/ssl/server.crt
       when: not docker_registry_cert_stat.stat.exists
       notify: restart nginx
 
