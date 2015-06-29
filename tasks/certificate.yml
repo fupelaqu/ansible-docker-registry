@@ -8,7 +8,7 @@
     sudo: no
 
   - name: create server key and certificate
-    local_action: shell /bin/bash --login -c 'openssl req -new -nodes -x509 -subj "/C=/ST=/L=/O=/CN={{docker_registry_host}}/subjectAltName=IP:{{docker_registry_ip}}" -days 3650 -keyout ./ssl/server.key -out ./ssl/server.crt -extensions v3_ca'
+    local_action: shell /bin/bash --login -c 'openssl req -new -nodes -x509 -subj "/C=/ST=/L=/O=/CN={{docker_registry_fqdn}}/subjectAltName=IP:{{docker_registry_ip}}" -days 3650 -keyout ./ssl/server.key -out ./ssl/server.crt -extensions v3_ca'
     sudo: no
     when: not local_certificate.stat.exists
 
