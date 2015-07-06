@@ -4,7 +4,7 @@
       apt: >
         name={{ item }}
         state=installed
-      with_items: 
+      with_items:
         - build-essential
         - python-dev
         - libevent-dev
@@ -14,7 +14,7 @@
         - swig
 
     - name: Install and Configure Docker Registry
-      pip: name=docker-registry
+      pip: "name=docker-registry extra_args='{{pip_extra_args}}'"
 
     - file: path=/var/lib/docker-registry state=directory
 
