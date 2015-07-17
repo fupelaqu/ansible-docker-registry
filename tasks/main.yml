@@ -8,13 +8,18 @@
         - build-essential
         - python-dev
         - libevent-dev
-        - python-pip
+        - python-setuptools #easy_install
         - liblzma-dev
         - libssl-dev
         - swig
 
+    # We must install pip before we can use the pip module below
+    - easy_install: name=pip #state=latest required ansible 2.x
+
     - name: Install and Configure Docker Registry
-      pip: "name=docker-registry extra_args='{{pip_extra_args}}'"
+      pip:
+        name: docker-registry
+        extra_args: "{{pip_extra_args}}"
 
     - file: path=/var/lib/docker-registry state=directory
 
@@ -26,6 +31,9 @@
 
     - copy: src=docker-registry.conf dest=/etc/init/
       notify: restart docker-registry
+
+    - name: ensure Docker Registry is started
+      service: name=docker-registry state=started
 
     - name: Secure Docker Registry with Nginx
       apt: >
