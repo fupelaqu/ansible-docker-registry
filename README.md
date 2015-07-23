@@ -1,7 +1,7 @@
 ansible-docker-registry
 =======================
 
-#Ansible playbook for docker-registry
+#Ansible playbook for docker-registry (v1 and v2 using docker official registry image)
 
 This is an [Ansible](http://www.ansibleworks.com/) playbook for [Docker registry](https://www.docker.com/). You can use it by itself or as part of a larger playbook customized for your local environment.
 
@@ -16,11 +16,14 @@ A sample [Vagrant](http://www.vagrantup.com/) configuration is provided to help 
 Assuming your playbook structure is such as:
 ```
 - my-master-playbook
+  |- filter_plugins
   |- vars
   |- roles
   |- my-master-playbook-main.yml
   \- my-master-inventory.ini
 ```
+
+Add filter_plugins/group.py file to your filter_plugins directory
 
 Checkout this project as a submodule under roles:
 
