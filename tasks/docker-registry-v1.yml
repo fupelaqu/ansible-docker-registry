@@ -1,0 +1,10 @@
+---
+
+  - name: install Docker Registry for Debian
+    include: docker-registry-v1-debian.yml
+    when: ansible_os_family == "Debian"
+
+# TODO finalize scripts for RedHat
+#  - name: install Docker Registry for RedHat
+#    include: docker-registry-v1-redhat.yml
+#    when: ansible_os_family == "RedHat"

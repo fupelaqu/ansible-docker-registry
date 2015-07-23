@@ -1,0 +1,69 @@
+---
+
+  - name: Install Prerequisites for Debian
+    apt: >
+      name={{ item }}
+      state=installed
+    with_items:
+      - build-essential
+      - python-dev
+      - libevent-dev
+      - python-setuptools #easy_install
+      - liblzma-dev
+      - libssl-dev
+      - swig
+
+  # We must install pip before we can use the pip module below
+  - easy_install: name=pip #state=latest required ansible 2.x
+
+  - name: Install and Configure Docker Registry
+    pip:
+      name: docker-registry
+      extra_args: "{{pip_extra_args}}"
+
+  - file: path=/var/lib/docker-registry state=directory
+
+  - name: copy docker-registry configuration file
+    copy: src=config.yml dest=/usr/local/lib/python2.7/dist-packages/config/config.yml
+    notify: restart docker-registry
+
+  - file: path=/var/log/docker-registry state=directory
+
+  - copy: src=docker-registry.conf dest=/etc/init/
+    notify: restart docker-registry
+
+  - name: ensure Docker Registry is started
+    service: name=docker-registry state=started
+
+  - name: Secure Docker Registry with Nginx for Debian
+    apt: >
+      name={{item}}
+      state=installed
+    with_items:
+      - nginx
+      - python-passlib
+      - openssl
+
+  - file: path=/etc/nginx/certs state=directory
+
+  - name: stat docker-registry certificate file
+    stat: path=/etc/nginx/certs/server.crt
+    register: docker_registry_cert_stat
+
+  - name: create server key and certificate
+    include: certificate.yml
+    when: not docker_registry_cert_stat.stat.exists
+    notify: restart nginx
+
+  - htpasswd: path=/etc/nginx/docker-registry.htpasswd name={{item.name}} password={{item.password}} owner=root group=root mode=0644
+    with_items: users
+    notify: restart nginx
+
+  - copy: src=nginx-docker-registry.conf dest=/etc/nginx/docker-registry.conf
+    notify: restart nginx
+
+  - template: src=docker-registry.j2 dest=/etc/nginx/sites-available/docker-registry owner=root group=root mode=0644
+    notify: restart nginx
+
+  - file: src=/etc/nginx/sites-available/docker-registry dest=/etc/nginx/sites-enabled/docker-registry state=link
+    notify: restart nginx

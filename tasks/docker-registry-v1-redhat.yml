@@ -1,0 +1,76 @@
+---
+
+  - name: Install Prerequisites for RedHat
+    yum:
+      name: "{{item}}"
+      state: installed
+    with_items:
+      - make
+      - automake
+      - gcc
+      - gcc-c++
+      - kernel-devel
+      - python-devel
+      - libevent-devel
+      - python-setuptools #easy_install
+      - xz-devel
+#      - python-rsa
+#      - pyOpenSSL
+      - openssl-devel
+      - swig
+    when: ansible_os_family == "RedHat"
+
+  # We must install pip before we can use the pip module below
+  - easy_install: name=pip #state=latest required ansible 2.x
+
+  - name: Install and Configure Docker Registry for RedHat
+    shell: "pip {{pip_extra_args}} install docker-registry"
+    environment:
+      SWIG_FEATURES: "-cpperraswarn"
+    when: ansible_os_family == "RedHat"
+
+  - file: path=/var/lib/docker-registry state=directory
+
+  - name: copy docker-registry configuration file
+    copy: src=config.yml dest=/usr/lib/python2.7/site-packages/config/config.yml
+    notify: restart docker-registry
+
+  - file: path=/var/log/docker-registry state=directory
+
+#TODO
+  - name: enable Docker Registry service
+    service: name=docker-registry enabled=yes
+
+  - name: ensure Docker Registry is started
+    service: name=docker-registry state=started
+
+  - name: Secure Docker Registry with Nginx for Redhat
+    yum:
+      name: "{{item}}"
+      state: installed
+    with_items:
+      - nginx
+      - python-passlib
+      - openssl
+    when: ansible_os_family == "RedHat"
+
+  - file: path=/etc/nginx/certs state=directory
+
+  - name: stat docker-registry certificate file
+    stat: path=/etc/nginx/certs/server.crt
+    register: docker_registry_cert_stat
+
+  - name: create server key and certificate
+    include: certificate.yml
+    when: not docker_registry_cert_stat.stat.exists
+    notify: restart nginx
+
+  - htpasswd: path=/etc/nginx/docker-registry.htpasswd name={{item.name}} password={{item.password}} owner=root group=root mode=0644
+    with_items: users
+    notify: restart nginx
+
+  - copy: src=nginx-docker-registry.conf dest=/etc/nginx/docker-registry.conf
+    notify: restart nginx
+
+  - template: src=docker-registry.j2 dest=/etc/nginx/conf.d/docker-registry.conf owner=root group=root mode=0644
+    notify: restart nginx

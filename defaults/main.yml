@@ -1,3 +1,10 @@
 ---
 
-pip_extra_args: ""
+__pip_extra_args: ""
+
+__docker_registry_fqdn: "{{ansible_fqdn}}"
+__docker_registry_ip: "{{hostvars[inventory_hostname]['ansible_eth1']['ipv4']['address']}}"
+
+__users:
+  - name: docker
+    password: changeit

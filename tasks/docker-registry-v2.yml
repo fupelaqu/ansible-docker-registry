@@ -1,0 +1,97 @@
+---
+
+  - name: Install Prerequisites for Debian
+    apt:
+      name: docker-py
+      state: installed
+    when: ansible_os_family == "Debian"
+
+  - name: Install Prerequisites for RedHat
+    yum:
+      name: docker-python
+      state: installed
+    when: ansible_os_family == "RedHat"
+
+  - name: Prepare Docker Registry Storage
+    file:
+      path: /var/lib/docker-registry
+      state: directory
+      mode: 750
+
+  - name: ensure Docker Registry is running
+    docker:
+      image: "registry:2"
+      memory_limit: 1024MB
+      name: "registry"
+      ports:
+        - "127.0.0.1:5000:5000"
+      env:
+        REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /registry
+      volumes:
+        - /var/lib/docker-registry:/registry:rw
+      privileged: yes
+      state: reloaded
+      pull: "missing"
+      restart_policy: always
+    register: start_registry
+
+  - name: test Docker Registry
+    uri:
+      url: http://localhost:5000/v2/
+      status_code: 200
+
+  - name: add NGinx repo for CentOS
+    copy: src=nginx-centos.repo dest=/etc/yum.repos.d/nginx.repo
+    when: ansible_distribution == 'CentOS'
+
+  - name: add NGinx repo for RedHat
+    copy: src=nginx-redhat.repo dest=/etc/yum.repos.d/nginx.repo
+    when: ansible_os_family == "RedHat" and (not ansible_distribution == 'CentOS')
+
+  - name: Secure Docker Registry with Nginx for Debian
+    apt:
+      name: "{{item}}"
+      state: latest
+    with_items:
+      - nginx
+      - python-passlib
+      - openssl
+    when: ansible_os_family == "Debian"
+
+  - name: Secure Docker Registry with Nginx for Redhat
+    yum:
+      name: "{{item}}"
+      state: latest
+    with_items:
+      - nginx
+      - python-passlib
+      - openssl
+    when: ansible_os_family == "RedHat"
+
+  - file: path=/etc/nginx/certs state=directory
+
+  - name: stat docker-registry certificate file
+    stat: path=/etc/nginx/certs/server.crt
+    register: docker_registry_cert_stat
+
+  - name: create server key and certificate
+    include: certificate.yml
+    when: not docker_registry_cert_stat.stat.exists
+    notify: restart nginx
+
+  - htpasswd: path=/etc/nginx/conf.d/registry.htpasswd name={{item.name}} password={{item.password}} owner=root group=root mode=0644
+    with_items: users
+
+  - template: src=docker-registry-v2.j2 dest=/etc/nginx/sites-available/docker-registry owner=root group=root mode=0644
+    when: ansible_os_family == "Debian"
+
+  - file: src=/etc/nginx/sites-available/docker-registry dest=/etc/nginx/sites-enabled/docker-registry state=link
+    notify: restart nginx
+    when: ansible_os_family == "Debian"
+
+  - template: src=docker-registry-v2.j2 dest=/etc/nginx/conf.d/docker-registry.conf owner=root group=root mode=0644
+    notify: restart nginx
+
+  - name: to fix SELinux issue for RedHat
+    shell: setsebool -P httpd_can_network_connect 1
+    when: ansible_os_family == "RedHat"
