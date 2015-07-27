@@ -1,9 +1,9 @@
 ---
 
   - name: Install Prerequisites for Debian
-    apt:
+    pip:
       name: docker-py
-      state: installed
+      state: present
     when: ansible_os_family == "Debian"
 
   - name: Install Prerequisites for RedHat
@@ -39,6 +39,10 @@
     uri:
       url: http://localhost:5000/v2/
       status_code: 200
+
+  - name: add NGinx repo for Ubuntu
+    apt_repository: repo=ppa:nginx/stable update_cache=yes state=present
+    when: ansible_distribution == 'Ubuntu'
 
   - name: add NGinx repo for CentOS
     copy: src=nginx-centos.repo dest=/etc/yum.repos.d/nginx.repo
@@ -82,16 +86,21 @@
   - htpasswd: path=/etc/nginx/conf.d/registry.htpasswd name={{item.name}} password={{item.password}} owner=root group=root mode=0644
     with_items: users
 
-  - template: src=docker-registry-v2.j2 dest=/etc/nginx/sites-available/docker-registry owner=root group=root mode=0644
-    when: ansible_os_family == "Debian"
+#  - template: src=docker-registry-v2.j2 dest=/etc/nginx/sites-available/docker-registry owner=root group=root mode=0644
+#    when: ansible_os_family == "Debian"
 
-  - file: src=/etc/nginx/sites-available/docker-registry dest=/etc/nginx/sites-enabled/docker-registry state=link
-    notify: restart nginx
-    when: ansible_os_family == "Debian"
+#  - file: src=/etc/nginx/sites-available/docker-registry dest=/etc/nginx/sites-enabled/docker-registry state=link
+#    notify: restart nginx
+#    when: ansible_os_family == "Debian"
 
   - template: src=docker-registry-v2.j2 dest=/etc/nginx/conf.d/docker-registry.conf owner=root group=root mode=0644
     notify: restart nginx
 
-  - name: to fix SELinux issue for RedHat
+  - name: check if selinux is enabled
+    command: getenforce
+    register: selinux_status
+    changed_when: false
+
+  - name: to fix SELinux issue
     shell: setsebool -P httpd_can_network_connect 1
-    when: ansible_os_family == "RedHat"
+    when: selinux_status.rc != 0
