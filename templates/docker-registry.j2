@@ -10,13 +10,13 @@ upstream docker-registry {
 # NOTE: docker client will still fail. This is just for convenience
 # server {
 #   listen *:80;
-#   server_name {{docker_registry_fqdn}};
+#   server_name {{docker_registry_host}};
 #   return 301 https://$server_name$request_uri;
 # }
 
 server {
   listen {{docker_registry_port}};
-  server_name {{docker_registry_fqdn}};
+  server_name {{docker_registry_host}};
 
 {% if docker_registry_with_ssl|bool %}
   # SSL

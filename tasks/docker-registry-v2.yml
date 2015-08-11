@@ -87,10 +87,10 @@
   - name: create server key and certificate
     include: certificate.yml
     when: docker_registry_with_ssl|bool and (not docker_registry_cert_stat.stat.exists)
-    notify: restart nginx
 
   - htpasswd: path=/etc/nginx/conf.d/registry.htpasswd name={{item.name}} password={{item.password}} owner=root group=root mode=0644
     with_items: users
+    register: docker_registry_auth
 
 #  - template: src=docker-registry-v2.j2 dest=/etc/nginx/sites-available/docker-registry owner=root group=root mode=0644
 #    when: ansible_os_family == "Debian"
@@ -100,7 +100,7 @@
 #    when: ansible_os_family == "Debian"
 
   - template: src=docker-registry-v2.j2 dest=/etc/nginx/conf.d/docker-registry.conf owner=root group=root mode=0644
-    notify: restart nginx
+    register: docker_registry_vhost
 
   - name: check if selinux is enabled
     command: getenforce
@@ -110,3 +110,6 @@
   - name: to fix SELinux issue
     shell: setsebool -P httpd_can_network_connect 1
     when: selinux_status.rc != 0
+
+  - service: name=nginx state=restarted
+    when: docker_registry_vhost.changed or docker_registry_auth.changed or (docker_registry_with_ssl|bool and (not docker_registry_cert_stat.stat.exists))

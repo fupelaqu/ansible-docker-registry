@@ -8,7 +8,7 @@
     sudo: no
 
   - name: create server key and certificate
-    local_action: shell /bin/bash --login -c 'openssl req -new -nodes -x509 -subj "/C=/ST=/L=/O=/CN={{docker_registry_fqdn}}/subjectAltName=IP:{{docker_registry_ip}}" -days 3650 -keyout ./ssl/server.key -out ./ssl/server.crt -extensions v3_ca'
+    local_action: shell /bin/bash --login -c 'openssl req -new -nodes -x509 -subj "/C=/ST=/L=/O=/CN={{docker_registry_host}}/subjectAltName=IP:{{docker_registry_ip}}" -days 3650 -keyout ./ssl/server.key -out ./ssl/server.crt -extensions v3_ca'
     sudo: no
     when: not local_certificate.stat.exists
 
@@ -17,19 +17,19 @@
       - server.key
       - server.crt
 
-  - copy: src=./ssl/server.crt dest=/usr/local/share/ca-certificates/{{docker_registry_fqdn}}.crt
+  - copy: src=./ssl/server.crt dest=/usr/local/share/ca-certificates/{{docker_registry_host}}.crt
     when: ansible_os_family == "Debian"
 
   - shell: update-ca-certificates
     when: ansible_os_family == "Debian"
 
-  - copy: src=./ssl/server.crt dest=/etc/pki/ca-trust/source/anchors/{{docker_registry_fqdn}}.crt
+  - copy: src=./ssl/server.crt dest=/etc/pki/ca-trust/source/anchors/{{docker_registry_host}}.crt
     when: ansible_os_family == "RedHat"
 
   - shell: update-ca-trust
     when: ansible_os_family == "RedHat"
 
-  - file: path=/etc/docker/certs.d/{{docker_registry_fqdn}}:{{docker_registry_port}} state=directory
+  - file: path=/etc/docker/certs.d/{{docker_registry_host}}:{{docker_registry_port}} state=directory
 
-  - copy: src=./ssl/server.crt dest=/etc/docker/certs.d/{{docker_registry_fqdn}}:{{docker_registry_port}}/ca.crt
+  - copy: src=./ssl/server.crt dest=/etc/docker/certs.d/{{docker_registry_host}}:{{docker_registry_port}}/ca.crt
     notify: restart docker
