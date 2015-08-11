@@ -12,11 +12,15 @@
       state: installed
     when: ansible_os_family == "RedHat"
 
+  - stat: path=/var/lib/docker-registry
+    register: docker_registry_storage
+
   - name: Prepare Docker Registry Storage
     file:
       path: /var/lib/docker-registry
       state: directory
       mode: 750
+    when: not docker_registry_storage.stat.exists #may already exist as a symbolic link
 
   - name: ensure Docker Registry is running
     docker:
