@@ -29,7 +29,7 @@
   - shell: update-ca-trust
     when: ansible_os_family == "RedHat"
 
-  - file: path=/etc/docker/certs.d/{{docker_registry_fqdn}} state=directory
+  - file: path=/etc/docker/certs.d/{{docker_registry_fqdn}}:{{docker_registry_port}} state=directory
 
-  - copy: src=./ssl/server.crt dest=/etc/docker/certs.d/{{docker_registry_fqdn}}/ca.crt
+  - copy: src=./ssl/server.crt dest=/etc/docker/certs.d/{{docker_registry_fqdn}}:{{docker_registry_port}}/ca.crt
     notify: restart docker

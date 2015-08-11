@@ -2,7 +2,7 @@
 # Replace with appropriate values where necessary
 
 upstream docker-registry {
- server localhost:5000;
+  server localhost:5000;
 }
 
 # uncomment if you want a 301 redirect for users attempting to connect
@@ -15,34 +15,37 @@ upstream docker-registry {
 # }
 
 server {
- listen 443;
- server_name {{docker_registry_fqdn}};
+  listen {{docker_registry_port}};
+  server_name {{docker_registry_fqdn}};
 
- ssl on;
- ssl_certificate /etc/nginx/certs/server.crt;
- ssl_certificate_key /etc/nginx/certs/server.key;
+{% if docker_registry_with_ssl|bool %}
+  # SSL
+  ssl on;
+  ssl_certificate /etc/nginx/certs/server.crt;
+  ssl_certificate_key /etc/nginx/certs/server.key;
+{% endif %}
 
- proxy_set_header Host       $http_host;   # required for Docker client sake
- proxy_set_header X-Real-IP  $remote_addr; # pass on real client IP
+  proxy_set_header Host       $http_host;   # required for Docker client sake
+  proxy_set_header X-Real-IP  $remote_addr; # pass on real client IP
 
- client_max_body_size 0; # disable any limits to avoid HTTP 413 for large image uploads
+  client_max_body_size 0; # disable any limits to avoid HTTP 413 for large image uploads
 
- # required to avoid HTTP 411: see Issue #1486 (https://github.com/dotcloud/docker/issues/1486)
- chunked_transfer_encoding on;
+  # required to avoid HTTP 411: see Issue #1486 (https://github.com/dotcloud/docker/issues/1486)
+  chunked_transfer_encoding on;
 
- location / {
-     # let Nginx know about our auth file
-     auth_basic              "Restricted access to Docker Registry";
-     auth_basic_user_file    docker-registry.htpasswd;
-     include                 docker-registry.conf;
- }
- location /_ping {
-     auth_basic off;
-     include                 docker-registry.conf;
- }
- location /v1/_ping {
-     auth_basic off;
-     include                 docker-registry.conf;
- }
+  location / {
+    # let Nginx know about our auth file
+    auth_basic              "Restricted access to Docker Registry";
+    auth_basic_user_file    docker-registry.htpasswd;
+    include                 docker-registry.conf;
+  }
+  location /_ping {
+    auth_basic off;
+    include                 docker-registry.conf;
+  }
+  location /v1/_ping {
+    auth_basic off;
+    include                 docker-registry.conf;
+  }
 
 }

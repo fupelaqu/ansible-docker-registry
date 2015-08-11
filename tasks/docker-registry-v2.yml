@@ -73,14 +73,16 @@
     when: ansible_os_family == "RedHat"
 
   - file: path=/etc/nginx/certs state=directory
+    when: docker_registry_with_ssl|bool
 
   - name: stat docker-registry certificate file
     stat: path=/etc/nginx/certs/server.crt
     register: docker_registry_cert_stat
+    when: docker_registry_with_ssl|bool
 
   - name: create server key and certificate
     include: certificate.yml
-    when: not docker_registry_cert_stat.stat.exists
+    when: docker_registry_with_ssl|bool and (not docker_registry_cert_stat.stat.exists)
     notify: restart nginx
 
   - htpasswd: path=/etc/nginx/conf.d/registry.htpasswd name={{item.name}} password={{item.password}} owner=root group=root mode=0644

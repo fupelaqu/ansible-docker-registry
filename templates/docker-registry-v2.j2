@@ -15,13 +15,15 @@ upstream docker-registry {
 # }
 
 server {
-  listen 443;
+  listen {{docker_registry_port}};
   server_name {{docker_registry_fqdn}};
 
+{% if docker_registry_with_ssl|bool %}
   # SSL
   ssl on;
   ssl_certificate /etc/nginx/certs/server.crt;
   ssl_certificate_key /etc/nginx/certs/server.key;
+{% endif %}
 
   # disable any limits to avoid HTTP 413 for large image uploads
   client_max_body_size 0;

@@ -4,5 +4,7 @@ pip_extra_args: "{{__pip_extra_args}}"
 
 docker_registry_fqdn: "{{__docker_registry_fqdn}}"
 docker_registry_ip: "{{__docker_registry_ip}}"
+docker_registry_with_ssl: "{{__docker_registry_with_ssl}}"
+docker_registry_port: "{{__docker_registry_port}}"
 
 users: "{{__users}}"
