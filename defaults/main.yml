@@ -1,12 +1,12 @@
 ---
 
-__pip_extra_args: ""
+pip_extra_args: ""
 
-__docker_registry_host: "{{ansible_fqdn}}"
-__docker_registry_ip: "{{hostvars[inventory_hostname]['ansible_eth1']['ipv4']['address']}}"
-__docker_registry_with_ssl: yes
-__docker_registry_port: 443
+docker_registry_host: "{{ansible_fqdn}}"
+docker_registry_ip: "{{hostvars[inventory_hostname]['ansible_eth1']['ipv4']['address']}}"
+docker_registry_with_ssl: yes
+docker_registry_port: 443
 
-__users:
+users:
   - name: docker
     password: changeit

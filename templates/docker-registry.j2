@@ -21,8 +21,8 @@ server {
 {% if docker_registry_with_ssl|bool %}
   # SSL
   ssl on;
-  ssl_certificate /etc/nginx/certs/server.crt;
-  ssl_certificate_key /etc/nginx/certs/server.key;
+  ssl_certificate /etc/nginx/certs/{{docker_registry_host}}.crt;
+  ssl_certificate_key /etc/nginx/certs/{{docker_registry_host}}.key;
 {% endif %}
 
   proxy_set_header Host       $http_host;   # required for Docker client sake

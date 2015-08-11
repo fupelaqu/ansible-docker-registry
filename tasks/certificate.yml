@@ -3,27 +3,27 @@
   - local_action: file path=./ssl state=directory
     sudo: no
 
-  - local_action: stat path=ssl/server.crt
+  - local_action: stat path=ssl/{{docker_registry_host}}.crt
     register: local_certificate
     sudo: no
 
   - name: create server key and certificate
-    local_action: shell /bin/bash --login -c 'openssl req -new -nodes -x509 -subj "/C=/ST=/L=/O=/CN={{docker_registry_host}}/subjectAltName=IP:{{docker_registry_ip}}" -days 3650 -keyout ./ssl/server.key -out ./ssl/server.crt -extensions v3_ca'
+    local_action: shell /bin/bash --login -c 'openssl req -new -nodes -x509 -subj "/C=/ST=/L=/O=/CN={{docker_registry_host}}/subjectAltName=IP:{{docker_registry_ip}}" -days 3650 -keyout ./ssl/{{docker_registry_host}}.key -out ./ssl/{{docker_registry_host}}.crt -extensions v3_ca'
     sudo: no
     when: not local_certificate.stat.exists
 
   - copy: src=./ssl/{{item}} dest=/etc/nginx/certs/
     with_items:
-      - server.key
-      - server.crt
+      - "{{docker_registry_host}}.key"
+      - "{{docker_registry_host}}.crt"
 
-  - copy: src=./ssl/server.crt dest=/usr/local/share/ca-certificates/{{docker_registry_host}}.crt
+  - copy: src=./ssl/{{docker_registry_host}}.crt dest=/usr/local/share/ca-certificates/{{docker_registry_host}}.crt
     when: ansible_os_family == "Debian"
 
   - shell: update-ca-certificates
     when: ansible_os_family == "Debian"
 
-  - copy: src=./ssl/server.crt dest=/etc/pki/ca-trust/source/anchors/{{docker_registry_host}}.crt
+  - copy: src=./ssl/{{docker_registry_host}}.crt dest=/etc/pki/ca-trust/source/anchors/{{docker_registry_host}}.crt
     when: ansible_os_family == "RedHat"
 
   - shell: update-ca-trust
@@ -31,5 +31,5 @@
 
   - file: path=/etc/docker/certs.d/{{docker_registry_host}}:{{docker_registry_port}} state=directory
 
-  - copy: src=./ssl/server.crt dest=/etc/docker/certs.d/{{docker_registry_host}}:{{docker_registry_port}}/ca.crt
+  - copy: src=./ssl/{{docker_registry_host}}.crt dest=/etc/docker/certs.d/{{docker_registry_host}}:{{docker_registry_port}}/ca.crt
     notify: restart docker

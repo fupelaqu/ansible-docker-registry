@@ -57,7 +57,7 @@
   - file: path=/etc/nginx/certs state=directory
 
   - name: stat docker-registry certificate file
-    stat: path=/etc/nginx/certs/server.crt
+    stat: path=/etc/nginx/certs/{{docker_registry_host}}.crt
     register: docker_registry_cert_stat
 
   - name: create server key and certificate
