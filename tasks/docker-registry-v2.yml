@@ -1,17 +1,27 @@
 ---
 
-  - name: Install Prerequisites for Debian
-    pip:
-      name: docker-py
-      state: present
-    when: ansible_os_family == "Debian"
-
-  - name: Install Prerequisites for RedHat
+# Install prerequisites
+  - name: make sure docker-python RPM is not installed for RedHat
     yum:
       name: docker-python
-      state: installed
+      state: absent
     when: ansible_os_family == "RedHat"
 
+  - name: Install easy_install, python-dev package for Debian
+    apt:
+      pkg: "{{ item }}"
+      state: latest
+      update_cache: yes
+      cache_valid_time: 3600
+    sudo: yes
+    with_items:
+      - python-dev
+      - python-setuptools #easy_install
+    when: ansible_os_family == "Debian"
+
+  - include: pip.yml
+
+# Install and run docker registry
   - stat: path=/var/lib/docker-registry
     register: docker_registry_storage
 
@@ -25,8 +35,8 @@
   - name: ensure Docker Registry is running
     docker:
       image: "registry:2"
-      memory_limit: 1024MB
-      name: "registry"
+#      memory_limit: 1024MB
+      name: registry
       ports:
         - "127.0.0.1:5000:5000"
       env:
@@ -35,7 +45,7 @@
         - /var/lib/docker-registry:/registry:rw
       privileged: yes
       state: reloaded
-      pull: "missing"
+      pull: missing
       restart_policy: always
     register: start_registry
 
@@ -43,25 +53,18 @@
     uri:
       url: http://localhost:5000/v2/
       status_code: 200
+      return_content: yes
+    register: test_docker_registry
+    until: test_docker_registry.content == '{}'
+    retries: 5
+    delay: 2
 
-  - name: add NGinx repo for Ubuntu
-    apt_repository: repo=ppa:nginx/stable update_cache=yes state=present
-    when: ansible_distribution == 'Ubuntu'
-
-  - name: add NGinx repo for CentOS
-    copy: src=nginx-centos.repo dest=/etc/yum.repos.d/nginx.repo
-    when: ansible_distribution == 'CentOS'
-
-  - name: add NGinx repo for RedHat
-    copy: src=nginx-redhat.repo dest=/etc/yum.repos.d/nginx.repo
-    when: ansible_os_family == "RedHat" and (not ansible_distribution == 'CentOS')
-
+# Secure docker registry
   - name: Secure Docker Registry with Nginx for Debian
     apt:
       name: "{{item}}"
       state: latest
     with_items:
-      - nginx
       - python-passlib
       - openssl
     when: ansible_os_family == "Debian"
@@ -71,7 +74,6 @@
       name: "{{item}}"
       state: latest
     with_items:
-      - nginx
       - python-passlib
       - openssl
     when: ansible_os_family == "RedHat"
@@ -89,15 +91,8 @@
     when: docker_registry_with_ssl|bool and (not docker_registry_cert_stat.stat.exists)
 
   - htpasswd: path=/etc/nginx/conf.d/registry.htpasswd name={{item.name}} password={{item.password}} owner=root group=root mode=0644
-    with_items: users
+    with_items: docker_registry_users
     register: docker_registry_auth
-
-#  - template: src=docker-registry-v2.j2 dest=/etc/nginx/sites-available/docker-registry owner=root group=root mode=0644
-#    when: ansible_os_family == "Debian"
-
-#  - file: src=/etc/nginx/sites-available/docker-registry dest=/etc/nginx/sites-enabled/docker-registry state=link
-#    notify: restart nginx
-#    when: ansible_os_family == "Debian"
 
   - template: src=docker-registry-v2.j2 dest=/etc/nginx/conf.d/docker-registry.conf owner=root group=root mode=0644
     register: docker_registry_vhost
@@ -111,5 +106,18 @@
     shell: setsebool -P httpd_can_network_connect 1
     when: selinux_status.rc != 0
 
-  - service: name=nginx state=restarted
-    when: docker_registry_vhost.changed or docker_registry_auth.changed or (docker_registry_with_ssl|bool and (not docker_registry_cert_stat.stat.exists))
+  - docker:
+      image: nginx:latest
+      name: www-registry
+      hostname: "{{ docker_registry_host }}"
+      ports: "{{docker_registry_ip}}:{{docker_registry_port}}:443"
+      links:
+        - registry:registry
+      volumes:
+        - "/var/log/nginx/:/var/log/nginx:rw"
+        - "/etc/nginx/conf.d:/etc/nginx/conf.d:ro"
+        - "/etc/nginx/certs:/etc/nginx/certs:ro"
+      state: reloaded
+      restart_policy: always
+      privileged: yes
+    register: start_nginx

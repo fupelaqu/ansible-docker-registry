@@ -7,6 +7,6 @@ docker_registry_ip: "{{hostvars[inventory_hostname]['ansible_eth1']['ipv4']['add
 docker_registry_with_ssl: yes
 docker_registry_port: 443
 
-users:
+docker_registry_users:
   - name: docker
     password: changeit
