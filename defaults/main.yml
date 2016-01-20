@@ -1,6 +1,12 @@
 ---
 
+pip_version_pip: latest
+pip_version_setuptools: latest
+pip_version_six: 1.4
+pip_version_docker_py: 1.1.0
+
 pip_extra_args: ""
+proxy_env: {}
 
 docker_registry_host: "{{ansible_fqdn}}"
 docker_registry_ip: "{{hostvars[inventory_hostname]['ansible_eth1']['ipv4']['address']}}"
