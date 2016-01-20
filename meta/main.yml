@@ -103,4 +103,4 @@ galaxy_info:
   - system
   #- web
   #- platform
-  dependencies: []
+dependencies: []
