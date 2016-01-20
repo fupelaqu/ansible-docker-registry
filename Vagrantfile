@@ -8,7 +8,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.define "registry" do |registry|
     registry.vm.box = "ubuntu/trusty64"
-    registry.vm.box_url = "https://vagrantcloud.com/ubuntu/boxes/trusty64.box"
+    registry.vm.box_url = "https://atlas.hashicorp.com/ubuntu/boxes/trusty64"
     registry.vm.hostname = "vagrant-registry.vm"
     registry.vm.network "private_network", ip: "192.168.56.110"
     registry.vm.synced_folder "./", "/vagrant", disabled:true
