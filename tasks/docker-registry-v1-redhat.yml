@@ -29,7 +29,7 @@
       SWIG_FEATURES: "-cpperraswarn"
     when: ansible_os_family == "RedHat"
 
-  - file: path=/var/lib/docker-registry state=directory
+  - file: path={{docker.registry.home}} state=directory
 
   - name: copy docker-registry configuration file
     copy: src=config.yml dest=/usr/lib/python2.7/site-packages/config/config.yml
@@ -57,7 +57,7 @@
   - file: path=/etc/nginx/certs state=directory
 
   - name: stat docker-registry certificate file
-    stat: path=/etc/nginx/certs/{{docker_registry_host}}.crt
+    stat: path=/etc/nginx/certs/{{docker.registry.host}}.crt
     register: docker_registry_cert_stat
 
   - name: create server key and certificate
@@ -66,7 +66,7 @@
     notify: restart nginx
 
   - htpasswd: path=/etc/nginx/docker-registry.htpasswd name={{item.name}} password={{item.password}} owner=root group=root mode=0644
-    with_items: docker_registry_users
+    with_items: docker.registry.users
     notify: restart nginx
 
   - copy: src=nginx-docker-registry.conf dest=/etc/nginx/docker-registry.conf

@@ -3,33 +3,33 @@
   - local_action: file path=./ssl state=directory
     sudo: no
 
-  - local_action: stat path=ssl/{{docker_registry_host}}.crt
+  - local_action: stat path=ssl/{{docker.registry.host}}.crt
     register: local_certificate
     sudo: no
 
   - name: create server key and certificate
-    local_action: shell /bin/bash --login -c 'openssl req -new -nodes -x509 -subj "/C=/ST=/L=/O=/CN={{docker_registry_host}}/subjectAltName=IP:{{docker_registry_ip}}" -days 3650 -keyout ./ssl/{{docker_registry_host}}.key -out ./ssl/{{docker_registry_host}}.crt -extensions v3_ca'
+    local_action: shell /bin/bash --login -c 'openssl req -new -nodes -x509 -subj "/C=/ST=/L=/O=/CN={{docker.registry.host}}/subjectAltName=IP:{{docker.registry.ip}}" -days 3650 -keyout ./ssl/{{docker.registry.host}}.key -out ./ssl/{{docker.registry.host}}.crt -extensions v3_ca'
     sudo: no
     when: not local_certificate.stat.exists
 
   - copy: src=./ssl/{{item}} dest=/etc/nginx/certs/
     with_items:
-      - "{{docker_registry_host}}.key"
-      - "{{docker_registry_host}}.crt"
+      - "{{docker.registry.host}}.key"
+      - "{{docker.registry.host}}.crt"
 
-  - copy: src=./ssl/{{docker_registry_host}}.crt dest=/usr/local/share/ca-certificates/{{docker_registry_host}}.crt
+  - copy: src=./ssl/{{docker.registry.host}}.crt dest=/usr/local/share/ca-certificates/{{docker.registry.host}}.crt
     when: ansible_os_family == "Debian"
 
   - shell: update-ca-certificates
     when: ansible_os_family == "Debian"
 
-  - copy: src=./ssl/{{docker_registry_host}}.crt dest=/etc/pki/ca-trust/source/anchors/{{docker_registry_host}}.crt
+  - copy: src=./ssl/{{docker.registry.host}}.crt dest=/etc/pki/ca-trust/source/anchors/{{docker.registry.host}}.crt
     when: ansible_os_family == "RedHat"
 
   - shell: update-ca-trust
     when: ansible_os_family == "RedHat"
 
-  - file: path=/etc/docker/certs.d/{{docker_registry_host}}:{{docker_registry_port}} state=directory
+  - file: path=/etc/docker/certs.d/{{docker.registry.host}}:{{docker.registry.port}} state=directory
 
-  - copy: src=./ssl/{{docker_registry_host}}.crt dest=/etc/docker/certs.d/{{docker_registry_host}}:{{docker_registry_port}}/ca.crt
+  - copy: src=./ssl/{{docker.registry.host}}.crt dest=/etc/docker/certs.d/{{docker.registry.host}}:{{docker.registry.port}}/ca.crt
     notify: restart docker

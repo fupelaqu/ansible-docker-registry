@@ -22,12 +22,12 @@
   - include: pip.yml
 
 # Install and run docker registry
-  - stat: path=/var/lib/docker-registry
+  - stat: path={{docker.registry.home}}
     register: docker_registry_storage
 
   - name: Prepare Docker Registry Storage
     file:
-      path: /var/lib/docker-registry
+      path: "{{docker.registry.home}}"
       state: directory
       mode: 750
     when: not docker_registry_storage.stat.exists #may already exist as a symbolic link
@@ -42,7 +42,7 @@
       env:
         REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /registry
       volumes:
-        - /var/lib/docker-registry:/registry:rw
+        - "{{docker.registry.home}}:/registry:rw"
       privileged: yes
       state: reloaded
       pull: missing
@@ -83,19 +83,19 @@
       extra_args: "{{ pip_extra_args }}"
 
   - file: path=/etc/nginx/certs state=directory
-    when: docker_registry_with_ssl|bool
+    when: docker.registry.with_ssl|bool
 
   - name: stat docker-registry certificate file
-    stat: path=/etc/nginx/certs/{{docker_registry_host}}.crt
+    stat: path=/etc/nginx/certs/{{docker.registry.host}}.crt
     register: docker_registry_cert_stat
-    when: docker_registry_with_ssl|bool
+    when: docker.registry.with_ssl|bool
 
   - name: create server key and certificate
     include: certificate.yml
-    when: docker_registry_with_ssl|bool and (not docker_registry_cert_stat.stat.exists)
+    when: docker.registry.with_ssl|bool and (not docker_registry_cert_stat.stat.exists)
 
   - htpasswd: path=/etc/nginx/conf.d/registry.htpasswd name={{item.name}} password={{item.password}} owner=root group=root mode=0644
-    with_items: docker_registry_users
+    with_items: docker.registry.users
     register: docker_registry_auth
 
   - template: src=docker-registry-v2.j2 dest=/etc/nginx/conf.d/docker-registry.conf owner=root group=root mode=0644
@@ -115,8 +115,8 @@
     docker:
       image: nginx:latest
       name: www-registry
-      hostname: "{{ docker_registry_host }}"
-      ports: "{{docker_registry_ip}}:{{docker_registry_port}}:443"
+      hostname: "{{ docker.registry.host }}"
+      ports: "{{docker.registry.ip}}:{{docker.registry.port}}:443"
       links:
         - registry:registry
       volumes:
