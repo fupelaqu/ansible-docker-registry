@@ -1,13 +1,17 @@
 ---
 
-    - name: restart docker
-      service: name=docker state=restarted
+  - name: restart docker
+    service: name=docker state=restarted
+    sudo: yes
 
-    - name: restart docker-registry
-      service: name=docker-registry state=restarted
+  - name: restart docker-registry
+    service: name=docker-registry state=restarted
+    sudo: yes
 
-    - name: restart registry
-      shell: docker restart registry
+  - name: restart registry
+    shell: docker restart registry
+    sudo: yes
 
-    - name: restart nginx
-      service: name=nginx state=restarted
+  - name: restart nginx
+    service: name=nginx state=restarted
+    sudo: yes

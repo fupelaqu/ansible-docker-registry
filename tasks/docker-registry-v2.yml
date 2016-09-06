@@ -5,6 +5,7 @@
     yum:
       name: docker-python
       state: absent
+    sudo: yes
     when: ansible_os_family == "RedHat"
 
   - name: Install easy_install, python-dev package for Debian
@@ -21,6 +22,10 @@
 
   - include: pip.yml
 
+  - name: Install httplib2 dependency for uri module #The dependency on httplib2 was removed in Ansible 2.1
+    pip: name=httplib2 state=present
+    sudo: yes
+
 # Install and run docker registry
   - stat: path={{docker.registry.home}}
     register: docker_registry_storage
@@ -30,6 +35,7 @@
       path: "{{docker.registry.home}}"
       state: directory
       mode: 750
+    sudo: yes
     when: not docker_registry_storage.stat.exists #may already exist as a symbolic link
 
   - name: ensure Docker Registry is running
@@ -48,16 +54,18 @@
       pull: missing
       restart_policy: always
     register: start_registry
+    sudo: yes
 
-#FIXME  - name: test Docker Registry
-#    uri:
-#      url: http://localhost:5000/v2/
-#      status_code: 200
-#      return_content: yes
-#    register: test_docker_registry
-#    until: test_docker_registry.content == '{}'
-#    retries: 5
-#    delay: 2
+  - name: test Docker Registry
+    uri:
+      url: http://localhost:5000/v2/
+      status_code: 200
+      return_content: yes
+    register: test_docker_registry
+    until: test_docker_registry.content == '{}'
+    retries: 5
+    delay: 2
+    ignore_errors: yes
 
 # Secure docker registry
   - name: Secure Docker Registry with Nginx for Debian
@@ -66,6 +74,7 @@
       state: latest
     with_items:
       - openssl
+    sudo: yes
     when: ansible_os_family == "Debian"
 
   - name: Secure Docker Registry with Nginx for Redhat
@@ -74,6 +83,7 @@
       state: latest
     with_items:
       - openssl
+    sudo: yes
     when: ansible_os_family == "RedHat"
 
   - name: Install latest passlib with pip
@@ -81,13 +91,16 @@
       name: passlib
       state: latest
       extra_args: "{{ pip_extra_args }}"
+    sudo: yes
 
   - file: path=/etc/nginx/certs state=directory
+    sudo: yes
     when: docker.registry.with_ssl|bool
 
   - name: stat docker-registry certificate file
     stat: path=/etc/nginx/certs/{{docker.registry.host}}.crt
     register: docker_registry_cert_stat
+    sudo: yes
     when: docker.registry.with_ssl|bool
 
   - name: create server key and certificate
@@ -96,19 +109,23 @@
 
   - htpasswd: path=/etc/nginx/conf.d/registry.htpasswd name={{item.name}} password={{item.password}} owner=root group=root mode=0644
     with_items: docker.registry.users
+    sudo: yes
     register: docker_registry_auth
 
   - template: src=docker-registry-v2.j2 dest=/etc/nginx/conf.d/docker-registry.conf owner=root group=root mode=0644
     register: docker_registry_vhost
+    sudo: yes
 
   - name: check if selinux is enabled
     command: getenforce
     register: selinux_status
     ignore_errors: yes
     changed_when: false
+    sudo: yes
 
   - name: to fix SELinux issue
     shell: setsebool -P httpd_can_network_connect 1
+    sudo: yes
     when: selinux_status.rc != 0
 
   - name: ensure Docker nginx is running
@@ -127,3 +144,4 @@
       restart_policy: always
       privileged: yes
     register: start_nginx
+    sudo: yes

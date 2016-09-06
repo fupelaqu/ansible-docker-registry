@@ -18,31 +18,38 @@
 #      - pyOpenSSL
       - openssl-devel
       - swig
+    sudo: yes
     when: ansible_os_family == "RedHat"
 
   # We must install pip before we can use the pip module below
   - easy_install: name=pip #state=latest required ansible 2.x
+    sudo: yes
 
   - name: Install and Configure Docker Registry for RedHat
     shell: "pip {{pip_extra_args}} install docker-registry"
     environment:
       SWIG_FEATURES: "-cpperraswarn"
+    sudo: yes
     when: ansible_os_family == "RedHat"
 
   - file: path={{docker.registry.home}} state=directory
 
   - name: copy docker-registry configuration file
     copy: src=config.yml dest=/usr/lib/python2.7/site-packages/config/config.yml
+    sudo: yes
     notify: restart docker-registry
 
   - file: path=/var/log/docker-registry state=directory
+    sudo: yes
 
 #TODO
   - name: enable Docker Registry service
     service: name=docker-registry enabled=yes
+    sudo: yes
 
   - name: ensure Docker Registry is started
     service: name=docker-registry state=started
+    sudo: yes
 
   - name: Secure Docker Registry with Nginx for Redhat
     yum:
@@ -52,9 +59,11 @@
       - nginx
       - python-passlib
       - openssl
+    sudo: yes
     when: ansible_os_family == "RedHat"
 
   - file: path=/etc/nginx/certs state=directory
+    sudo: yes
 
   - name: stat docker-registry certificate file
     stat: path=/etc/nginx/certs/{{docker.registry.host}}.crt
@@ -67,10 +76,13 @@
 
   - htpasswd: path=/etc/nginx/docker-registry.htpasswd name={{item.name}} password={{item.password}} owner=root group=root mode=0644
     with_items: docker.registry.users
+    sudo: yes
     notify: restart nginx
 
   - copy: src=nginx-docker-registry.conf dest=/etc/nginx/docker-registry.conf
+    sudo: yes
     notify: restart nginx
 
   - template: src=docker-registry.j2 dest=/etc/nginx/conf.d/docker-registry.conf owner=root group=root mode=0644
+    sudo: yes
     notify: restart nginx

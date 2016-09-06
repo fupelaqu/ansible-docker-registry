@@ -1,35 +1,42 @@
 ---
 
-  - local_action: file path=./ssl state=directory
+  - local_action: file path={{playbook_dir}}/ssl state=directory
     sudo: no
 
-  - local_action: stat path=ssl/{{docker.registry.host}}.crt
+  - local_action: stat path={{playbook_dir}}/ssl/{{docker.registry.host}}.crt
     register: local_certificate
     sudo: no
 
   - name: create server key and certificate
-    local_action: shell /bin/bash --login -c 'openssl req -new -nodes -x509 -subj "/C=/ST=/L=/O=/CN={{docker.registry.host}}/subjectAltName=IP:{{docker.registry.ip}}" -days 3650 -keyout ./ssl/{{docker.registry.host}}.key -out ./ssl/{{docker.registry.host}}.crt -extensions v3_ca'
+    local_action: shell /bin/bash --login -c 'openssl req -new -nodes -x509 -subj "/C=/ST=/L=/O=/CN={{docker.registry.host}}/subjectAltName=IP:{{docker.registry.ip}}" -days 3650 -keyout {{playbook_dir}}/ssl/{{docker.registry.host}}.key -out {{playbook_dir}}/ssl/{{docker.registry.host}}.crt -extensions v3_ca'
     sudo: no
     when: not local_certificate.stat.exists
 
-  - copy: src=./ssl/{{item}} dest=/etc/nginx/certs/
+  - copy: src={{playbook_dir}}/ssl/{{item}} dest=/etc/nginx/certs/
+    sudo: yes
     with_items:
       - "{{docker.registry.host}}.key"
       - "{{docker.registry.host}}.crt"
 
-  - copy: src=./ssl/{{docker.registry.host}}.crt dest=/usr/local/share/ca-certificates/{{docker.registry.host}}.crt
+  - copy: src={{playbook_dir}}/ssl/{{docker.registry.host}}.crt dest=/usr/local/share/ca-certificates/{{docker.registry.host}}.crt
+    sudo: yes
     when: ansible_os_family == "Debian"
 
   - shell: update-ca-certificates
+    sudo: yes
     when: ansible_os_family == "Debian"
 
-  - copy: src=./ssl/{{docker.registry.host}}.crt dest=/etc/pki/ca-trust/source/anchors/{{docker.registry.host}}.crt
+  - copy: src={{playbook_dir}}/ssl/{{docker.registry.host}}.crt dest=/etc/pki/ca-trust/source/anchors/{{docker.registry.host}}.crt
+    sudo: yes
     when: ansible_os_family == "RedHat"
 
   - shell: update-ca-trust
+    sudo: yes
     when: ansible_os_family == "RedHat"
 
   - file: path=/etc/docker/certs.d/{{docker.registry.host}}:{{docker.registry.port}} state=directory
+    sudo: yes
 
-  - copy: src=./ssl/{{docker.registry.host}}.crt dest=/etc/docker/certs.d/{{docker.registry.host}}:{{docker.registry.port}}/ca.crt
+  - copy: src={{playbook_dir}}/ssl/{{docker.registry.host}}.crt dest=/etc/docker/certs.d/{{docker.registry.host}}:{{docker.registry.port}}/ca.crt
+    sudo: yes
     notify: restart docker
