@@ -13,10 +13,10 @@
       state: latest
       extra_args: "{{ pip_extra_args }}"
     with_items:
-      - { name: pip, version: "{{ pip_version_pip }}" }
-      - { name: setuptools, version: "{{ pip_version_setuptools }}" }
-      - { name: six, version: "{{ pip_version_six }}" }
-      - { name: docker-py, version: "{{ pip_version_docker_py }}" }
+      - { name: pip, version: "{{ pip.version.pip }}" }
+      - { name: setuptools, version: "{{ pip.version.setuptools }}" }
+      - { name: six, version: "{{ pip.version.six }}" }
+      - { name: docker-py, version: "{{ pip.version.docker_py }}" }
     sudo: yes
     when: item.version=="latest"
 
@@ -28,9 +28,9 @@
       version: "{{ item.version }}"
       extra_args: "{{ pip_extra_args }}"
     with_items:
-      - { name: pip, version: "{{ pip_version_pip }}" }
-      - { name: setuptools, version: "{{ pip_version_setuptools }}" }
-      - { name: six, version: "{{ pip_version_six }}" }
-      - { name: docker-py, version: "{{ pip_version_docker_py }}" }
+      - { name: pip, version: "{{ pip.version.pip }}" }
+      - { name: setuptools, version: "{{ pip.version.setuptools }}" }
+      - { name: six, version: "{{ pip.version.six }}" }
+      - { name: docker-py, version: "{{ pip.version.docker_py }}" }
     sudo: yes
     when: item.version!="latest"

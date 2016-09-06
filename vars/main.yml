@@ -1,0 +1,18 @@
+---
+
+docker:
+  registry:
+    host: "{{ docker_registry_host | default(ansible_fqdn) }}"
+    ip: "{{ docker_registry_ip | default(ansible_default_ipv4['address']|string) }}"
+    with_ssl: "{{ docker_registry_with_ssl | default('yes') }}"
+    port: "{{ docker_registry_port | default(443) }}"
+    home: "{{ docker_registry_home | default('/var/lib/docker-registry') }}"
+    users: "{{ docker_registry_users | default([]) }}"
+
+# Versions for the python packages that are installed
+pip:
+  version:
+    pip: "{{ pip_version_pip | default('latest') }}"
+    setuptools: "{{ pip_version_setuptools | default('latest') }}"
+    six: "{{ pip_version_six | default('1.4') }}"
+    docker_py: "{{ pip_version_docker_py | default('1.1.0') }}"

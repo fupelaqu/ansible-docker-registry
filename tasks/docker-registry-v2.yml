@@ -5,6 +5,7 @@
     yum:
       name: docker-python
       state: absent
+    sudo: yes
     when: ansible_os_family == "RedHat"
 
   - name: Install easy_install, python-dev package for Debian
@@ -21,15 +22,20 @@
 
   - include: pip.yml
 
+  - name: Install httplib2 dependency for uri module #The dependency on httplib2 was removed in Ansible 2.1
+    pip: name=httplib2 state=present
+    sudo: yes
+
 # Install and run docker registry
-  - stat: path=/var/lib/docker-registry
+  - stat: path={{docker.registry.home}}
     register: docker_registry_storage
 
   - name: Prepare Docker Registry Storage
     file:
-      path: /var/lib/docker-registry
+      path: "{{docker.registry.home}}"
       state: directory
       mode: 750
+    sudo: yes
     when: not docker_registry_storage.stat.exists #may already exist as a symbolic link
 
   - name: ensure Docker Registry is running
@@ -42,22 +48,24 @@
       env:
         REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /registry
       volumes:
-        - /var/lib/docker-registry:/registry:rw
+        - "{{docker.registry.home}}:/registry:rw"
       privileged: yes
       state: reloaded
       pull: missing
       restart_policy: always
     register: start_registry
+    sudo: yes
 
-#FIXME  - name: test Docker Registry
-#    uri:
-#      url: http://localhost:5000/v2/
-#      status_code: 200
-#      return_content: yes
-#    register: test_docker_registry
-#    until: test_docker_registry.content == '{}'
-#    retries: 5
-#    delay: 2
+  - name: test Docker Registry
+    uri:
+      url: http://localhost:5000/v2/
+      status_code: 200
+      return_content: yes
+    register: test_docker_registry
+    until: test_docker_registry.content == '{}'
+    retries: 5
+    delay: 2
+    ignore_errors: yes
 
 # Secure docker registry
   - name: Secure Docker Registry with Nginx for Debian
@@ -66,6 +74,7 @@
       state: latest
     with_items:
       - openssl
+    sudo: yes
     when: ansible_os_family == "Debian"
 
   - name: Secure Docker Registry with Nginx for Redhat
@@ -74,6 +83,7 @@
       state: latest
     with_items:
       - openssl
+    sudo: yes
     when: ansible_os_family == "RedHat"
 
   - name: Install latest passlib with pip
@@ -81,42 +91,49 @@
       name: passlib
       state: latest
       extra_args: "{{ pip_extra_args }}"
+    sudo: yes
 
   - file: path=/etc/nginx/certs state=directory
-    when: docker_registry_with_ssl|bool
+    sudo: yes
+    when: docker.registry.with_ssl|bool
 
   - name: stat docker-registry certificate file
-    stat: path=/etc/nginx/certs/{{docker_registry_host}}.crt
+    stat: path=/etc/nginx/certs/{{docker.registry.host}}.crt
     register: docker_registry_cert_stat
-    when: docker_registry_with_ssl|bool
+    sudo: yes
+    when: docker.registry.with_ssl|bool
 
   - name: create server key and certificate
     include: certificate.yml
-    when: docker_registry_with_ssl|bool and (not docker_registry_cert_stat.stat.exists)
+    when: docker.registry.with_ssl|bool and (not docker_registry_cert_stat.stat.exists)
 
   - htpasswd: path=/etc/nginx/conf.d/registry.htpasswd name={{item.name}} password={{item.password}} owner=root group=root mode=0644
-    with_items: docker_registry_users
+    with_items: docker.registry.users
+    sudo: yes
     register: docker_registry_auth
 
   - template: src=docker-registry-v2.j2 dest=/etc/nginx/conf.d/docker-registry.conf owner=root group=root mode=0644
     register: docker_registry_vhost
+    sudo: yes
 
   - name: check if selinux is enabled
     command: getenforce
     register: selinux_status
     ignore_errors: yes
     changed_when: false
+    sudo: yes
 
   - name: to fix SELinux issue
     shell: setsebool -P httpd_can_network_connect 1
+    sudo: yes
     when: selinux_status.rc != 0
 
   - name: ensure Docker nginx is running
     docker:
       image: nginx:latest
       name: www-registry
-      hostname: "{{ docker_registry_host }}"
-      ports: "{{docker_registry_ip}}:{{docker_registry_port}}:443"
+      hostname: "{{ docker.registry.host }}"
+      ports: "{{docker.registry.ip}}:{{docker.registry.port}}:443"
       links:
         - registry:registry
       volumes:
@@ -127,3 +144,4 @@
       restart_policy: always
       privileged: yes
     register: start_nginx
+    sudo: yes
