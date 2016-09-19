@@ -5,6 +5,7 @@
   user: $user
 
   vars_files:
+    - defaults/main.yml
     - vars/main.yml
 
   tasks:
