@@ -1,24 +1,44 @@
 ---
 
-  - local_action: file path={{playbook_dir}}/ssl state=directory
-    sudo: no
+  - local_action: file path={{inventory_dir}}/registry state=directory
 
-  - local_action: stat path={{playbook_dir}}/ssl/{{docker.registry.host}}.crt
+  - local_action: stat path={{inventory_dir}}/registry/domain.crt
     register: local_certificate
-    sudo: no
 
-  - name: create server key and certificate
-    local_action: shell /bin/bash --login -c 'openssl req -new -nodes -x509 -subj "/C=/ST=/L=/O=/CN={{docker.registry.host}}/subjectAltName=IP:{{docker.registry.ip}}" -days 3650 -keyout {{playbook_dir}}/ssl/{{docker.registry.host}}.key -out {{playbook_dir}}/ssl/{{docker.registry.host}}.crt -extensions v3_ca'
-    sudo: no
+  - name: copy openssl configuration for RedHat
+    shell: cp /etc/pki/tls/openssl.cnf /tmp/openssl.cnf
+    sudo: yes
+    when: not local_certificate.stat.exists and ansible_os_family == "RedHat"
+
+  - name: copy openssl configuration for Debian
+    shell: cp /usr/local/ssl/openssl.cnf /tmp/openssl.cnf
+    sudo: yes
+    when: not local_certificate.stat.exists and ansible_os_family == "Debian"
+
+  - name: update openssl configuration
+    shell: sed -i "/\[ v3_ca \]/a subjectAltName = IP:{{docker.registry.ip}}" /tmp/openssl.cnf
+    sudo: yes
     when: not local_certificate.stat.exists
 
-  - copy: src={{playbook_dir}}/ssl/{{item}} dest=/etc/nginx/certs/
+  - name: create server key and certificate
+    shell: openssl req -config /tmp/openssl.cnf -newkey rsa:2048 -nodes -x509 -subj "/C=/ST=/L=/O=/CN={{docker.registry.host}}" -days 365 -keyout /tmp/domain.key -out /tmp/domain.crt
+    sudo: yes
+    when: not local_certificate.stat.exists
+
+  - name: download server key and certificate
+    fetch: src=/tmp/{{item}} dest={{inventory_dir}}/registry/ flat=yes
+    with_items:
+      - domain.crt
+      - domain.key
+    when: not local_certificate.stat.exists
+
+  - copy: src={{inventory_dir}}/registry/domain.{{item}} dest=/etc/nginx/certs/{{docker.registry.host}}.{{item}}
     sudo: yes
     with_items:
-      - "{{docker.registry.host}}.key"
-      - "{{docker.registry.host}}.crt"
+      - key
+      - crt
 
-  - copy: src={{playbook_dir}}/ssl/{{docker.registry.host}}.crt dest=/usr/local/share/ca-certificates/{{docker.registry.host}}.crt
+  - copy: src={{inventory_dir}}/registry/domain.crt dest=/usr/local/share/ca-certificates/{{docker.registry.host}}.crt
     sudo: yes
     when: ansible_os_family == "Debian"
 
@@ -26,7 +46,7 @@
     sudo: yes
     when: ansible_os_family == "Debian"
 
-  - copy: src={{playbook_dir}}/ssl/{{docker.registry.host}}.crt dest=/etc/pki/ca-trust/source/anchors/{{docker.registry.host}}.crt
+  - copy: src={{inventory_dir}}/registry/domain.crt dest=/etc/pki/ca-trust/source/anchors/{{docker.registry.host}}.crt
     sudo: yes
     when: ansible_os_family == "RedHat"
 
@@ -34,9 +54,9 @@
     sudo: yes
     when: ansible_os_family == "RedHat"
 
-  - file: path=/etc/docker/certs.d/{{docker.registry.host}}:{{docker.registry.port}} state=directory
+  - file: path=/etc/docker/certs.d/{{docker.registry.host}} state=directory
     sudo: yes
 
-  - copy: src={{playbook_dir}}/ssl/{{docker.registry.host}}.crt dest=/etc/docker/certs.d/{{docker.registry.host}}:{{docker.registry.port}}/ca.crt
+  - copy: src={{inventory_dir}}/registry/domain.crt dest=/etc/docker/certs.d/{{docker.registry.host}}/ca.crt
     sudo: yes
     notify: restart docker
