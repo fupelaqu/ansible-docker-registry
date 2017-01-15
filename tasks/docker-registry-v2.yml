@@ -38,21 +38,18 @@
     sudo: yes
     when: not docker_registry_storage.stat.exists #may already exist as a symbolic link
 
+  - name: stop previous docker registry
+    command: "docker kill registry"
+    ignore_errors: yes
+    sudo: yes
+
+  - name: remove previous docker registry
+    command: "docker rm registry"
+    ignore_errors: yes
+    sudo: yes
+
   - name: ensure Docker Registry is running
-    docker:
-      image: "registry:2"
-#      memory_limit: 1024MB
-      name: registry
-      ports:
-        - "127.0.0.1:5000:5000"
-      env:
-        REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /registry
-      volumes:
-        - "{{docker.registry.home}}:/registry:rw"
-      privileged: yes
-      state: reloaded
-      pull: missing
-      restart_policy: always
+    command: "docker run -d -p 127.0.0.1:5000:5000 --name registry --net=bridge --privileged=true --restart=always --memory=\"1024m\" -e \"REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY=/registry\" -v {{docker.registry.home}}:/registry:rw registry:2"
     register: start_registry
     sudo: yes
 
@@ -128,20 +125,17 @@
     sudo: yes
     when: selinux_status.rc != 0
 
+  - name: stop previous docker nginx
+    command: "docker kill www-registry"
+    ignore_errors: yes
+    sudo: yes
+
+  - name: remove previous docker nginx
+    command: "docker rm www-registry"
+    ignore_errors: yes
+    sudo: yes
+
   - name: ensure Docker nginx is running
-    docker:
-      image: nginx:latest
-      name: www-registry
-      hostname: "{{ docker.registry.host }}"
-      ports: "{{docker.registry.ip}}:{{docker.registry.port}}:443"
-      links:
-        - registry:registry
-      volumes:
-        - "/var/log/nginx/:/var/log/nginx:rw"
-        - "/etc/nginx/conf.d:/etc/nginx/conf.d:ro"
-        - "/etc/nginx/certs:/etc/nginx/certs:ro"
-      state: reloaded
-      restart_policy: always
-      privileged: yes
+    command: "docker run -d -p {{docker.registry.ip}}:{{docker.registry.port}}:443 --name www-registry --net=bridge --privileged=true --restart=always --memory=\"512m\" --hostname={{ docker.registry.host }} --link=\"registry:registry\" -v /var/log/nginx/:/var/log/nginx:rw -v /etc/nginx/conf.d:/etc/nginx/conf.d:ro -v /etc/nginx/certs:/etc/nginx/certs:ro nginx:latest"
     register: start_nginx
     sudo: yes
